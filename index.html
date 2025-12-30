@@ -1,0 +1,1038 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Offline QR Generator (with Center Logo)</title>
+
+  <!--
+    Single-file app. Uses CDN library only (no bundlers).
+    NOTE: Fully offline usage requires the CDN script to be available.
+    If you want "works fully offline" with zero network dependency, you'd need to inline the library code.
+  -->
+
+  <style>
+    :root{
+	--bg:#ffffff;
+	--card:#ffffff;
+	--muted:#64748b;
+	--text:#0f172a;
+	--border:#e2e8f0;
+	--accent:#16a34a;
+	--accent2:#2563eb;
+	--warn:#b45309;
+	--err:#b91c1c;
+	--shadow: none;          
+	--radius: 12px;
+	}
+    *{ box-sizing:border-box; }
+    body{
+		margin:0;
+		font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+		background: #ffffff;
+		color: var(--text);
+		line-height: 1.35;
+	}
+
+    a{ color: var(--accent2); text-decoration: none; }
+    .wrap{
+		max-width: 1280px; /* was 1100px */
+		margin: 28px auto;
+		padding: 0 16px 28px;
+	}
+    header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom: 16px;
+    }
+    header h1{
+      margin:0;
+      font-size: 1.25rem;
+      letter-spacing: .2px;
+    }
+    header p{
+      margin:6px 0 0;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+    .grid{
+		display:grid;
+		grid-template-columns: minmax(0, 1fr) 520px; /* left flexible, right fixed */
+		gap: 16px;
+		align-items: start;
+	}
+    .card{
+		background: var(--card);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		box-shadow: none;
+		overflow: hidden;
+	}
+
+    .card .hd{
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .card .hd .title{
+      font-weight: 600;
+      letter-spacing: .2px;
+    }
+    .card .bd{
+      padding: 16px;
+    }
+
+    textarea{
+      width:100%;
+      min-height: 132px;
+      resize: vertical;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      outline:none;
+      font-size: 0.98rem;
+    }
+    textarea:focus{
+      border-color: rgba(96,165,250,.55);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.18);
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .row.spread{ justify-content:space-between; }
+    .btn{
+      appearance:none;
+      border: 2px solid #28a745;
+      background: #28a745;
+      color: #ffffff;
+      padding: 9px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight: 600;
+      letter-spacing: .2px;
+      transition: transform .05s ease, border-color .15s ease, background .15s ease;
+      user-select:none;
+    }
+    .btn:hover{ border-color: #000000; }
+    .btn:active{ transform: translateY(1px); }
+
+    .btn.primary{
+      background: #6c757d;
+	  border: 2px solid #6c757d;
+      color: #ffffff;
+    }
+    .btn.primary:hover{ border-color: #000000; }
+    .btn.ghost{
+      background: transparent;
+    }
+    .btn.danger{
+      background: #F77474;
+      border-color: #D50032;
+      color: #000000;
+    }
+    .btn.danger:hover{ border-color: rgba(239,68,68,.55); }
+
+    .controls{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 520px){
+      .controls{ grid-template-columns: 1fr; }
+    }
+    .control{
+		background: #ffffff;
+		border: 1px solid var(--border);
+		border-radius: 12px;
+		padding: 12px;
+	}
+    .control label{
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap:10px;
+      font-size: .9rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .control label strong{
+      color: var(--text);
+      font-weight: 650;
+      font-size: .95rem;
+    }
+    select, input[type="range"], input[type="file"]{
+      width:100%;
+    }
+    select{
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      outline:none;
+    }
+    select:focus{
+      border-color: rgba(96,165,250,.55);
+      box-shadow: 0 0 0 3px rgba(96,165,250,.18);
+    }
+    input[type="range"]{
+      accent-color: var(--accent2);
+    }
+    .help{
+      color: var(--muted);
+      font-size: .85rem;
+      margin-top: 8px;
+    }
+    .msg{
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(148,163,184,.18);
+      background: #92C728;
+      color: #ffffff;
+      font-size: .92rem;
+    }
+    .msg.warn{
+      border-color: rgba(245,158,11,.35);
+      color: #fcd34d;
+      background: rgba(245,158,11,.08);
+    }
+    .msg.err{
+      border-color: rgba(239,68,68,.38);
+      color: #fecaca;
+      background: rgba(239,68,68,.08);
+    }
+
+    .preview{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 12px;
+      padding: 12px 16px 18px;
+    }
+    .qrStage{
+      width: min(100%, 520px);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      padding: 14px;
+      border-radius: 18px;
+      border: 1px dashed rgba(148,163,184,.22);
+      background: rgba(2,6,23,.35);
+    }
+    canvas{
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: none;
+      max-width: 100%;
+      height: auto;
+      display:block;
+    }
+
+    .logoBox{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .logoPreview{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(148,163,184,.14);
+      background: #92C728;
+    }
+    .thumb{
+      width: 56px; height:56px;
+      border-radius: 12px;
+      overflow:hidden;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(148,163,184,.18);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex: 0 0 auto;
+    }
+    .thumb img{
+      width:100%; height:100%;
+      object-fit: cover;
+      display:block;
+    }
+    .logoMeta{
+      flex:1 1 auto;
+      min-width: 0;
+    }
+    .logoMeta .name{
+      font-weight: 650;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .logoMeta .sub{
+      color: var(--muted);
+      font-size: .88rem;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    footer{
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: .85rem;
+      text-align:center;
+    }
+    .k{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: .86em;
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid rgba(148,163,184,.22);
+      background: #000000;
+      color: #ffffff;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>QR Code Generator</h1>
+      </div>
+      <div class="row" style="justify-content:flex-end;">
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Left: Inputs + Controls -->
+      <section class="card">
+        <div class="hd">
+          <div class="row">
+            <button class="btn primary" id="generateBtn">Generate QR</button>
+			<button class="btn danger" id="clearBtn" title="Clear input and reset message">Clear</button>
+          </div>
+        </div>
+
+        <div class="bd">
+          <div class="row" style="margin-bottom:10px;">
+            <div style="flex:1 1 auto; min-width: 240px;">
+              <textarea id="textInput" placeholder="Paste a URL or any text…"></textarea>
+              <div id="validation" class="msg warn" style="display:none;"></div>
+            </div>
+          </div>
+
+          <div class="controls">
+            <div class="control">
+              <label>
+                <strong>Error correction</strong>
+                <span class="k" id="ecLabel">H</span>
+              </label>
+              <select id="ecSelect">
+                <option value="L">L (7%)</option>
+                <option value="M">M (15%)</option>
+                <option value="Q">Q (25%)</option>
+                <option value="H" selected>H (30%) — recommended for logo</option>
+              </select>
+              <div class="help">Higher error correction is more resilient to logo coverage.</div>
+            </div>
+
+            <div class="control">
+              <label>
+                <strong>QR size</strong>
+                <span class="k" id="sizeLabel">420 px</span>
+              </label>
+              <input id="sizeRange" type="range" min="200" max="800" step="10" value="420" />
+              <div class="help">Larger = sharper when printing.</div>
+            </div>
+			
+			<div class="control">
+				<label>
+					<strong>QR color</strong>
+					<span class="k" id="colorLabel">#000000</span>
+				</label>
+					<div class="row" style="gap:8px;">
+						<input id="qrColor" type="color" value="#000000" />
+						<input id="qrColorHex" type="text" value="#000000" inputmode="text" spellcheck="false"
+				placeholder="#000000" aria-label="QR color hex"
+				style="max-width:140px; padding:10px; border-radius:12px; border:1px solid var(--border);" />
+					</div>
+
+					<div class="help">Use dark colors for best scanning.</div>
+				</div>
+
+            <div class="control" style="grid-column: 1 / -1;">
+              <label>
+                <strong>Logo overlay</strong>
+                <span class="k" id="logoPctLabel">20%</span>
+              </label>
+
+              <div class="logoBox">
+                <input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+
+                <div class="logoPreview" id="logoPreview" style="display:none;">
+                  <div class="thumb"><img id="logoThumb" alt="Logo preview" /></div>
+                  <div class="logoMeta">
+                    <div class="name" id="logoName"></div>
+                    <div class="sub" id="logoInfo"></div>
+                  </div>
+                  <button class="btn danger" id="removeLogoBtn" type="button">Remove</button>
+                </div>
+
+                <input id="logoRange" type="range" min="10" max="30" step="1" value="20" />
+                <div class="help">
+                  High coverage can break scanning.
+                </div>
+              </div>
+            </div>
+
+            <div class="control">
+              <label>
+                <strong>Logo plate</strong>
+                <span class="k" id="platePadLabel">10%</span>
+              </label>
+              <input id="platePadRange" type="range" min="6" max="16" step="1" value="10" />
+            </div>
+
+            <div class="control">
+              <label>
+                <strong>Plate corner radius</strong>
+                <span class="k" id="plateRadLabel">18%</span>
+              </label>
+              <input id="plateRadRange" type="range" min="0" max="40" step="1" value="18" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:14px;">
+            <button class="btn" id="downloadPngBtn">Download PNG</button>
+            <button class="btn" id="downloadSvgBtn" title="Best-effort SVG export (see comment in code)">Download SVG</button>
+          </div>
+          
+        </div>
+      </section>
+
+      <!-- Right: Preview -->
+      <section class="card">
+        <div class="hd">
+          <div class="title">Preview</div>
+          <div class="row">
+            <span class="k" id="payloadLen">0 chars</span>
+          </div>
+        </div>
+
+        <div class="preview">
+          <div class="qrStage">
+            <canvas id="qrCanvas" width="420" height="420"></canvas>
+          </div>
+          <div class="msg" id="scanHint">
+            If scanning fails, try reducing the logo size, increasing QR size, or using shorter text.
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- QR library (CDN). Renders to a canvas we provide.
+       Library: qrious (simple, reliable, canvas-based)
+       Docs: https://github.com/neocotic/qrious
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+
+  <script>
+    (function(){
+      "use strict";
+
+      // ---------- Elements ----------
+      const textInput       = document.getElementById("textInput");
+      const generateBtn     = document.getElementById("generateBtn");
+      const copyInputBtn    = document.getElementById("copyInputBtn");
+      const clearBtn        = document.getElementById("clearBtn");
+
+      const ecSelect        = document.getElementById("ecSelect");
+      const ecLabel         = document.getElementById("ecLabel");
+
+      const sizeRange       = document.getElementById("sizeRange");
+      const sizeLabel       = document.getElementById("sizeLabel");
+
+      const logoFile        = document.getElementById("logoFile");
+      const logoRange       = document.getElementById("logoRange");
+      const logoPctLabel    = document.getElementById("logoPctLabel");
+
+      const platePadRange   = document.getElementById("platePadRange");
+      const platePadLabel   = document.getElementById("platePadLabel");
+
+      const plateRadRange   = document.getElementById("plateRadRange");
+      const plateRadLabel   = document.getElementById("plateRadLabel");
+
+      const qrCanvas        = document.getElementById("qrCanvas");
+
+      const downloadPngBtn  = document.getElementById("downloadPngBtn");
+      const downloadSvgBtn  = document.getElementById("downloadSvgBtn");
+
+      const validation      = document.getElementById("validation");
+      const statusMsg = document.getElementById("statusMsg"); // may be null (ok)
+
+      const payloadLen      = document.getElementById("payloadLen");
+
+      const logoPreview     = document.getElementById("logoPreview");
+      const logoThumb       = document.getElementById("logoThumb");
+      const logoName        = document.getElementById("logoName");
+      const logoInfo        = document.getElementById("logoInfo");
+      const removeLogoBtn   = document.getElementById("removeLogoBtn");
+	  const qrColor   = document.getElementById("qrColor");
+	  const colorLabel = document.getElementById("colorLabel");
+	  const qrColorHex = document.getElementById("qrColorHex");
+
+
+      // ---------- State ----------
+      let logoImage = null;          // HTMLImageElement (or SVG rendered by browser)
+      let logoObjectUrl = null;      // for cleanup
+      let lastQrMatrixCanvas = null; // offscreen matrix-only QR (no logo), used for (best-effort) SVG export
+      let debTimer = null;
+
+      // ---------- Helpers ----------
+      function setValidation(msg, kind="warn"){
+        if(!msg){
+          validation.style.display = "none";
+          validation.className = "msg";
+          validation.textContent = "";
+          return;
+        }
+        validation.style.display = "block";
+        validation.className = "msg " + (kind === "err" ? "err" : "warn");
+        validation.textContent = msg;
+      }
+
+      function debounce(fn, ms){
+        return function(){
+          clearTimeout(debTimer);
+          debTimer = setTimeout(fn, ms);
+        };
+      }
+
+      function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+      function roundRectPath(ctx, x, y, w, h, r){
+        // r: px
+        const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rr);
+        ctx.arcTo(x + w, y + h, x, y + h, rr);
+        ctx.arcTo(x, y + h, x, y, rr);
+        ctx.arcTo(x, y, x + w, y, rr);
+        ctx.closePath();
+      }
+	  
+	        // ---- Module-space logo hole helpers (module-aligned, quiet-zone aware) ----
+      function computeLogoHoleModules(opts){
+        // opts: { count, quiet, moduleSize, logoPct, platePadPct }
+        // Returns null if logoPct falsy, else {x0,y0,w,h, logoW, logoH, pad, quiet}
+        const { count, quiet, logoPct, platePadPct } = opts;
+        if(!logoPct || logoPct <= 0) return null;
+
+        // Target logo size in *data modules* (not including quiet zone)
+        // Use count (data modules) as the basis; this keeps behavior stable across canvas sizes.
+        let logoMods = Math.round((count * (logoPct / 100)));
+        // keep logo reasonable and at least 1 module if enabled
+        logoMods = clamp(logoMods, 1, Math.max(1, count - 2));
+
+        // Padding in modules (derived from logo size), snapped to modules
+        let padMods = Math.round(logoMods * platePadPct);
+        padMods = clamp(padMods, 0, Math.floor(count / 4));
+
+        // Plate/hole size in modules
+        let holeMods = logoMods + padMods * 2;
+
+        // Ensure the hole fits inside the data area (do NOT intrude into quiet zone)
+        const maxHole = count; // only within data modules
+        if(holeMods > maxHole){
+          holeMods = maxHole;
+          // shrink pad first if needed
+          const leftover = Math.max(0, holeMods - logoMods);
+          padMods = Math.floor(leftover / 2);
+        }
+
+        // Center the hole within the data area, then offset by quiet zone
+        const startInData = Math.floor((count - holeMods) / 2);
+        const x0 = quiet + startInData;
+        const y0 = quiet + startInData;
+
+        return {
+          x0, y0,
+          w: holeMods,
+          h: holeMods,
+          logoW: logoMods,
+          logoH: logoMods,
+          pad: padMods,
+          quiet
+        };
+      }
+
+      function moduleRectToPx(rect, offset, moduleSize){
+        // rect: {x0,y0,w,h} in module coords (including quiet zone)
+        return {
+          x: offset + rect.x0 * moduleSize,
+          y: offset + rect.y0 * moduleSize,
+          w: rect.w * moduleSize,
+          h: rect.h * moduleSize
+        };
+      }
+
+      function isModuleInHole(r, c, hole){
+        // r,c are module coords in the *full grid* (including quiet zone)
+        if(!hole) return false;
+        return (
+          c >= hole.x0 && c < (hole.x0 + hole.w) &&
+          r >= hole.y0 && r < (hole.y0 + hole.h)
+        );
+      }
+
+      function downloadBlob(blob, filename){
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url), 1500);
+      }
+
+      function nowStamp(){
+        const d = new Date();
+        const pad = (n)=> String(n).padStart(2,"0");
+        return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + "_" + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+      }
+
+      // ---------- QR generation ----------
+      // We use qrious to draw the QR "matrix" to a canvas.
+      // Then we draw logo plate + logo on top to a visible canvas.
+
+      function render(){
+        const text = (textInput.value || "").trim();
+        payloadLen.textContent = (text.length) + " chars";
+
+        ecLabel.textContent = ecSelect.value;
+        const size = parseInt(sizeRange.value, 10);
+        sizeLabel.textContent = size + " px";
+
+        const logoPct = parseInt(logoRange.value, 10);
+        logoPctLabel.textContent = logoPct + "%";
+
+        const platePadPct = parseInt(platePadRange.value, 10);
+        platePadLabel.textContent = platePadPct + "%";
+
+        const plateRadPct = parseInt(plateRadRange.value, 10);
+        plateRadLabel.textContent = plateRadPct + "%";
+
+        // Validation
+        if(!text){
+          setValidation("Enter text to generate QR code.", "warn");
+          // Clear canvas to a friendly blank
+          const ctx = qrCanvas.getContext("2d");
+          qrCanvas.width = size;
+          qrCanvas.height = size;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, size, size);
+          ctx.fillStyle = "rgba(0,0,0,.55)";
+          ctx.font = "16px system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("Enter text to generate a QR", size/2, size/2);
+          if (statusMsg) statusMsg.textContent = "Waiting for input…";
+          return;
+        }
+        setValidation("");
+
+                // Build QR matrix (qrcode-generator)
+        const level = ecSelect.value; // L/M/Q/H
+        const qr = qrcode(0, level);  // typeNumber=0 => auto version
+        qr.addData(text);
+        qr.make();
+
+        const count = qr.getModuleCount(); // data modules per side (no quiet zone included)
+
+        // ---- Canvas sizing ----
+        qrCanvas.width = size;
+        qrCanvas.height = size;
+        const ctx = qrCanvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
+
+        // ---- Colors ----
+        const fg = (qrColor?.value || "#000000").toUpperCase();
+		colorLabel.textContent = fg;
+		if (qrColorHex) qrColorHex.value = fg;
+
+
+        // ---- Real quiet zone in MODULES (keep intact) ----
+        // Standard is 4 modules. We allocate it explicitly so it doesn't depend on leftover pixels.
+        const QUIET = 4;
+        const fullCount = count + QUIET * 2;
+
+        // Module size in pixels (integer for crisp edges)
+        const moduleSize = Math.floor(size / fullCount);
+		
+		if (moduleSize < 1) {
+			setValidation("QR is too dense for this pixel size. Increase QR size or shorten text.", "err");
+			if (statusMsg) statusMsg.textContent = "Increase QR size or shorten the payload.";
+			// optional: clear to white so it doesn't show a stale QR
+			ctx.fillStyle = "#ffffff";
+			ctx.fillRect(0, 0, size, size);
+		return;
+	}
+		
+        const drawSize = moduleSize * fullCount;
+        const offset = ((size - drawSize) / 2) | 0;
+
+        // Background
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, size, size);
+
+        // ---- Compute module-aligned hole (ONLY if logo present) ----
+        let hole = null;
+        let platePx = null;
+        let plateRpx = 0;
+
+        if (logoImage) {
+          const logoPctV = parseInt(logoRange.value, 10);
+          const platePadPctV = parseInt(platePadRange.value, 10);
+          const plateRadPctV = parseInt(plateRadRange.value, 10);
+
+          hole = computeLogoHoleModules({
+            count,
+            quiet: QUIET,
+            moduleSize,
+            logoPct: logoPctV,
+            platePadPct: platePadPctV / 100
+          });
+
+          // Convert plate (hole) rect to pixels for drawing the white plate later
+          // (authoritative exclusion is still module rect; rounding is visual only)
+          if (hole) {
+            platePx = moduleRectToPx({ x0: hole.x0, y0: hole.y0, w: hole.w, h: hole.h }, offset, moduleSize);
+            plateRpx = Math.round(Math.min(platePx.w, platePx.h) * (plateRadPctV / 100));
+          }
+        }
+
+        // ---- Draw modules (skip quiet zone & skip hole modules) ----
+        ctx.fillStyle = fg;
+
+        // Iterate over DATA modules (r/c in [0..count-1]) and map to FULL grid coords by adding QUIET
+        for (let r = 0; r < count; r++) {
+          const rr = r + QUIET;
+          for (let c = 0; c < count; c++) {
+            if (!qr.isDark(r, c)) continue;
+
+            const cc = c + QUIET;
+
+            // Skip any module inside the reserved logo region (module-aligned)
+            if (hole && isModuleInHole(rr, cc, hole)) continue;
+
+            const x = offset + cc * moduleSize;
+            const y = offset + rr * moduleSize;
+            ctx.fillRect(x, y, moduleSize, moduleSize);
+          }
+        }
+
+        // ---- Draw plate + logo ONCE (no destination-out punching) ----
+        if (logoImage && hole && platePx) {
+          // Plate
+          ctx.save();
+          ctx.fillStyle = "#ffffff";
+          roundRectPath(ctx, platePx.x, platePx.y, platePx.w, platePx.h, plateRpx);
+          ctx.fill();
+
+          // Logo area is the "inner" module square (hole minus padding)
+          const logoMods = hole.logoW;   // square
+          const logoPxBox = {
+            x: offset + (hole.x0 + hole.pad) * moduleSize,
+            y: offset + (hole.y0 + hole.pad) * moduleSize,
+            w: logoMods * moduleSize,
+            h: logoMods * moduleSize
+          };
+
+          // Contain-fit the image inside logoPxBox
+          const iw = logoImage.naturalWidth || logoImage.width || logoPxBox.w;
+          const ih = logoImage.naturalHeight || logoImage.height || logoPxBox.h;
+
+          let drawW = logoPxBox.w, drawH = logoPxBox.h;
+          const ar = iw / ih;
+
+          if (ar >= 1) {
+            drawW = logoPxBox.w;
+            drawH = Math.max(1, Math.round(drawW / ar));
+          } else {
+            drawH = logoPxBox.h;
+            drawW = Math.max(1, Math.round(drawH * ar));
+          }
+
+          const logoX = (logoPxBox.x + (logoPxBox.w - drawW) / 2) | 0;
+          const logoY = (logoPxBox.y + (logoPxBox.h - drawH) / 2) | 0;
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.drawImage(logoImage, logoX, logoY, drawW, drawH);
+          ctx.restore();
+        }
+
+        if (statusMsg) statusMsg.textContent = "Generated. Adjust controls or download.";
+      }
+
+      const debouncedRender = debounce(render, 300);
+
+      // ---------- Logo handling ----------
+      function clearLogo(){
+        logoImage = null;
+        if(logoObjectUrl){
+          URL.revokeObjectURL(logoObjectUrl);
+          logoObjectUrl = null;
+        }
+        logoFile.value = "";
+        logoPreview.style.display = "none";
+        render();
+      }
+
+      async function loadLogoFile(file){
+        if(!file) return;
+
+        const type = (file.type || "").toLowerCase();
+        const ok = ["image/png","image/jpeg","image/webp","image/svg+xml"].includes(type);
+        if(!ok){
+          setValidation("Unsupported logo type. Please use PNG, JPG, WebP, or SVG.", "err");
+          return;
+        }
+        setValidation("");
+
+        // Create an object URL and load into an Image element.
+        // For SVG: the browser can rasterize it when drawn to canvas.
+        if(logoObjectUrl) URL.revokeObjectURL(logoObjectUrl);
+        logoObjectUrl = URL.createObjectURL(file);
+
+        const img = new Image();
+        img.decoding = "async";
+        // Important: keep same-origin; object URLs are fine for canvas export.
+        img.onload = () => {
+          logoImage = img;
+
+          // UI preview
+          logoThumb.src = logoObjectUrl;
+          logoName.textContent = file.name || "logo";
+          logoInfo.textContent = `${(file.size/1024).toFixed(1)} KB • ${type.replace("image/","").toUpperCase()}`;
+          logoPreview.style.display = "flex";
+
+          // If user chose a very large % with low EC, hint them.
+          if(ecSelect.value !== "H"){
+            if (statusMsg) statusMsg.textContent = "Hint: with a logo, error correction H is recommended.";
+          }
+          render();
+        };
+        img.onerror = () => {
+          setValidation("Could not load logo image. Try a different file.", "err");
+          // cleanup the bad url
+          if(logoObjectUrl){ URL.revokeObjectURL(logoObjectUrl); logoObjectUrl = null; }
+          logoImage = null;
+          logoPreview.style.display = "none";
+          render();
+        };
+
+        img.src = logoObjectUrl;
+      }
+
+      // ---------- Exports ----------
+      function downloadPNG(){
+        const text = (textInput.value || "").trim();
+        if(!text){
+          setValidation("Enter text to generate a QR before downloading.", "warn");
+          return;
+        }
+        setValidation("");
+
+        qrCanvas.toBlob((blob)=>{
+          if(!blob){
+            setValidation("PNG export failed in this browser.", "err");
+            return;
+          }
+          downloadBlob(blob, `qr_${nowStamp()}.png`);
+        }, "image/png");
+      }
+
+      function tryExportSVG(){
+        const text = (textInput.value || "").trim();
+        if(!text){
+          setValidation("Enter text to generate a QR before downloading.", "warn");
+          return;
+        }
+        setValidation("");
+
+        /*
+          SVG export note:
+          - qrious renders to canvas, not SVG.
+          - We can still do a BEST-EFFORT SVG by embedding the *PNG* data as an <image> inside an SVG wrapper.
+            This is technically an SVG file, but the QR itself is raster inside it.
+          - True vector QR SVG would require an SVG-capable QR library (e.g., qr-code-styling or qrcode-generator path output).
+          - Requirement: "Download SVG (if possible). If not feasible, explain briefly in a comment and still provide PNG export."
+          => This approach provides an SVG wrapper with embedded PNG (works in most viewers, prints well).
+        */
+
+        // Convert current canvas to PNG data URL
+        const pngDataUrl = qrCanvas.toDataURL("image/png");
+        const size = qrCanvas.width;
+
+        const svg =
+`<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  <title>QR Code</title>
+  <desc>Embedded PNG (raster) inside SVG wrapper. For true vector SVG, use an SVG-capable QR library.</desc>
+  <image href="${pngDataUrl}" x="0" y="0" width="${size}" height="${size}" />
+</svg>`;
+
+        const blob = new Blob([svg], {type:"image/svg+xml;charset=utf-8"});
+        downloadBlob(blob, `qr_${nowStamp()}.svg`);
+      }
+
+      // ---------- Clipboard helpers ----------
+      async function copyInput(){
+        const text = textInput.value || "";
+        if(!text.trim()){
+          setValidation("Nothing to copy yet.", "warn");
+          return;
+        }
+        try{
+          await navigator.clipboard.writeText(text);
+          setValidation("");
+          if (statusMsg) statusMsg.textContent = "Copied input to clipboard.";
+        }catch(e){
+          // Fallback: select and copy
+          try{
+            textInput.focus();
+            textInput.select();
+            document.execCommand("copy");
+            if (statusMsg) statusMsg.textContent = "Copied input to clipboard (fallback).";
+          }catch(_){
+            setValidation("Clipboard copy failed in this browser.", "err");
+          }
+        }
+      }
+
+      function clearAll(){
+        textInput.value = "";
+        setValidation("");
+        if (statusMsg) statusMsg.textContent = "";
+        payloadLen.textContent = "0 chars";
+        clearLogo();
+        // clearLogo() calls render()
+      }
+
+      // ---------- Event wiring ----------
+      generateBtn.addEventListener("click", render);
+      textInput.addEventListener("input", debouncedRender);
+
+      ecSelect.addEventListener("change", () => {
+        ecLabel.textContent = ecSelect.value;
+        render();
+      });
+
+      sizeRange.addEventListener("input", () => {
+        sizeLabel.textContent = sizeRange.value + " px";
+        debouncedRender();
+      });
+
+      logoRange.addEventListener("input", () => {
+        logoPctLabel.textContent = logoRange.value + "%";
+        debouncedRender();
+      });
+
+      platePadRange.addEventListener("input", () => {
+        platePadLabel.textContent = platePadRange.value + "%";
+        debouncedRender();
+      });
+
+      plateRadRange.addEventListener("input", () => {
+        plateRadLabel.textContent = plateRadRange.value + "%";
+        debouncedRender();
+      });
+
+      logoFile.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        loadLogoFile(file);
+      });
+	  
+	  function normalizeHex(s){
+  s = String(s || "").trim();
+  if(!s) return null;
+  if(s[0] !== "#") s = "#" + s;
+  if(!/^#[0-9a-fA-F]{6}$/.test(s)) return null;
+  return s.toUpperCase();
+}
+
+function setQrColor(hex){
+  qrColor.value = hex;
+  if (qrColorHex) qrColorHex.value = hex;
+  colorLabel.textContent = hex;
+  debouncedRender();
+}
+
+// color picker → hex box
+qrColor.addEventListener("input", () => {
+  const hex = normalizeHex(qrColor.value) || "#000000";
+  setQrColor(hex);
+});
+
+// hex box → color picker (only apply when valid)
+if (qrColorHex) {
+  qrColorHex.addEventListener("input", () => {
+    const hex = normalizeHex(qrColorHex.value);
+    if(hex){
+      setQrColor(hex);
+    } else {
+      // keep label in sync with whatever is currently active
+      colorLabel.textContent = qrColor.value.toUpperCase();
+    }
+  });
+
+  // On blur, snap back to current valid value if they typed garbage
+  qrColorHex.addEventListener("blur", () => {
+    qrColorHex.value = qrColor.value.toUpperCase();
+  });
+}
+
+
+      removeLogoBtn.addEventListener("click", clearLogo);
+
+      downloadPngBtn.addEventListener("click", downloadPNG);
+      downloadSvgBtn.addEventListener("click", tryExportSVG);
+
+      if (copyInputBtn) copyInputBtn.addEventListener("click", copyInput);
+      if (clearBtn) clearBtn.addEventListener("click", clearAll);
+
+      // Initial paint (blank state)
+      render();
+
+      // ---------- Safety hints (optional) ----------
+      // If the user pushes logo too big, warn them.
+      function maybeWarnLogoCoverage(){
+        const pct = parseInt(logoRange.value, 10);
+        if(logoImage && pct > 25){
+          if (statusMsg) statusMsg.textContent = "Warning: large logo coverage may break scanning. Consider 15–25%.";
+        }
+      }
+      logoRange.addEventListener("change", maybeWarnLogoCoverage);
+      ecSelect.addEventListener("change", maybeWarnLogoCoverage);
+
+    })();
+  </script>
+</body>
+</html>
