@@ -10,7 +10,7 @@
     NOTE: Fully offline usage requires the CDN script to be available.
     If you want "works fully offline" with zero network dependency, you'd need to inline the library code.
   -->
-  <link rel="stylesheet" href="https://item-list-handler.onrender.com/shared/nav.css?v=1.0.0">
+  <link rel="stylesheet" href="https://item-list-handler.onrender.com/shared/nav.css?v=1.0.1">
   <style>
     :root{
 	--bg:#ffffff;
@@ -37,21 +37,22 @@
     a{ color: var(--accent2); text-decoration: none; }
     .wrap{
 		max-width: 1280px; /* was 1100px */
-		margin: 28px auto;
-		padding: 0 16px 28px;
+		margin: 0 auto;
+		padding: 0px 16px 28px;
 	}
     header{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:16px;
-      margin-bottom: 16px;
-    }
-    header h1{
-      margin:0;
-      font-size: 1.25rem;
-      letter-spacing: .2px;
-    }
+		background:var(--accent);
+		color:#fff;
+		padding: 20px;
+		text-align:center;
+		margin: 0 0 20px;   /* space below header before the cards */
+	}
+
+	header h1{
+		margin: 0;          /* snug inside header */
+		font-size: 1.5rem;
+		letter-spacing: .2px;
+	}
     header p{
       margin:6px 0 0;
       color: var(--muted);
@@ -310,13 +311,7 @@
 
 <body>
   <div class="wrap">
-    <header>
-      <div>
-        <h1>QR Code Generator</h1>
-      </div>
-      <div class="row" style="justify-content:flex-end;">
-      </div>
-    </header>
+    <header><h1>QR Code Generator</h1></header>
 
     <div class="grid">
       <!-- Left: Inputs + Controls -->
@@ -1034,5 +1029,6 @@ if (qrColorHex) {
 
     })();
   </script>
+  <script src="https://item-list-handler.onrender.com/shared/nav.js?v=1.0.0"></script>
 </body>
 </html>
