@@ -4,6 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>QR Generator</title>
+
+  <!--
+    Single-file app. Uses CDN library only (no bundlers).
+    NOTE: Fully offline usage requires the CDN script to be available.
+    If you want "works fully offline" with zero network dependency, you'd need to inline the library code.
+  -->
   <link rel="stylesheet" href="https://item-list-handler.onrender.com/shared/nav.css?v=1.0.1">
   <style>
     :root{
@@ -304,10 +310,11 @@
 </head>
 
 <body>
-  <div class="wrap">
+  <div class="header">
     <header><h1>QR Code Generator</h1></header>
 
-    <div class="grid">
+	<div class="wrap">
+	<div class="grid">
       <!-- Left: Inputs + Controls -->
       <section class="card">
         <div class="hd">
@@ -433,6 +440,7 @@
         </div>
       </section>
     </div>
+	</div>
   </div>
 
   <!-- QR library (CDN). Renders to a canvas we provide.
