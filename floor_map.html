@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Image Viewer</title>
+
+  <!-- Shared nav assets -->
+  <link rel="stylesheet" href="https://item-list-handler.onrender.com/shared/nav.css?v=1.0.0" />
+
+  <style>
+    :root{
+      --bg: #faf6ee;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #dbe2ea;
+      --btn: #ffffff;
+      --btn-hover: #f3f4f6;
+      --btn-active: #e5e7eb;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --radius: 16px;
+
+      /* CHANGE THESE: fixed display area for the PDF viewer */
+      --viewer-width: 980px;
+      --viewer-height: 720px;
+
+      /* CHANGE THESE: fixed visible page size */
+      --page-css-width: 900px;
+      --page-gap: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    .page-shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .hero {
+      margin-top: 16px;
+      margin-bottom: 18px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px 22px;
+    }
+
+    .hero h1 {
+      margin: 0 0 6px 0;
+      font-size: 1.6rem;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.96rem;
+    }
+
+    .viewer-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid #cfd8e3;
+      background: var(--btn);
+      color: var(--text);
+      padding: 9px 13px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.05s ease, border-color 0.15s ease;
+    }
+
+    .btn:hover { background: var(--btn-hover); }
+    .btn:active {
+      background: var(--btn-active);
+      transform: translateY(1px);
+    }
+    .btn[disabled] {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn.active {
+      border-color: #64748b;
+      background: #eef2f7;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 38px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      font-size: 0.93rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .viewer-wrap {
+      padding: 16px;
+    }
+
+    .viewer-container {
+      width: min(100%, var(--viewer-width));
+      margin: 0 auto;
+      background: transparent;
+      border: none;
+      padding: 0;
+    }
+
+    .viewer-inner {
+      min-width: fit-content;
+      display: flex;
+      flex-direction: column;
+      gap: var(--page-gap);
+      align-items: center;
+    }
+
+    .page-frame {
+      width: var(--page-css-width);
+      background: #ffffff;
+      border: 1px solid #d9e1e8;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+      padding: 14px;
+    }
+
+    .page-label {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    canvas.pdf-page {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      background: white;
+    }
+
+    .status {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px 16px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .status.error {
+      color: #b91c1c;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .footer-note {
+      padding: 0 16px 16px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      text-align: center;
+    }
+
+    @media (max-width: 1100px) {
+      :root {
+        --viewer-width: 980px;
+        --page-css-width: 900px;
+      }
+    }
+
+    @media (max-width: 920px) {
+      :root {
+        /* Keep a fixed page width for stable rendering; container scrolls horizontally on smaller screens */
+        --page-css-width: 760px;
+      }
+
+      .hero h1 {
+        font-size: 1.35rem;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page-shell {
+        padding: 12px;
+      }
+
+      .hero {
+        padding: 16px;
+      }
+
+      .toolbar {
+        padding: 12px;
+      }
+
+      .viewer-wrap {
+        padding: 12px;
+      }
+
+      .viewer-container {
+        height: 68vh;
+        padding: 12px;
+      }
+
+      .page-frame {
+        padding: 10px;
+      }
+
+      .btn,
+      .badge {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Shared nav will attach here -->
+  <div id="shared-nav"></div>
+
+  <main class="page-shell">
+    <section class="hero">
+      <!-- CHANGE THIS: page title and subtitle -->
+      <h1 id="pageTitle">Floor Map</h1>
+      <p id="pageSubtitle"></p>
+    </section>
+
+    <section class="viewer-card">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button id="prevBtn" class="btn" type="button" disabled>← Previous</button>
+          <button id="nextBtn" class="btn" type="button" disabled>Next →</button>
+          <span id="pageIndicator" class="badge">Page 0 / 0</span>
+          <span id="modeIndicator" class="badge">Mode: Single page</span>
+        </div>
+
+        <div class="toolbar-right">
+          <button id="toggleModeBtn" class="btn" type="button" disabled>Render all pages</button>
+          <button id="reloadBtn" class="btn" type="button">Reload</button>
+        </div>
+      </div>
+
+      <div class="viewer-wrap">
+        <div id="status" class="status">Loading PDF…</div>
+
+        <div id="viewerContainer" class="viewer-container hidden" aria-label="PDF image viewer">
+          <div id="viewerInner" class="viewer-inner"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://item-list-handler.onrender.com/shared/nav.js?v=1.0.0"></script>
+
+  <script>
+  /* =========================
+     CHANGE THESE SETTINGS
+     ========================= */
+
+  // CHANGE THIS: path to your image file
+  const IMAGE_URL = 'floor_map_20260322.png';
+
+  // CHANGE THIS: page title text shown in the header and browser tab
+  const PAGE_TITLE = 'Floor Map';
+  const PAGE_SUBTITLE = 'HGC Floor Map';
+
+  const pageTitleEl = document.getElementById('pageTitle');
+  const pageSubtitleEl = document.getElementById('pageSubtitle');
+  const statusEl = document.getElementById('status');
+  const viewerContainerEl = document.getElementById('viewerContainer');
+  const viewerInnerEl = document.getElementById('viewerInner');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const toggleModeBtn = document.getElementById('toggleModeBtn');
+  const reloadBtn = document.getElementById('reloadBtn');
+  const pageIndicatorEl = document.getElementById('pageIndicator');
+  const modeIndicatorEl = document.getElementById('modeIndicator');
+
+  document.title = PAGE_TITLE;
+  pageTitleEl.textContent = PAGE_TITLE;
+  pageSubtitleEl.textContent = PAGE_SUBTITLE;
+
+  function setStatus(message, type = 'normal') {
+    statusEl.textContent = message;
+    statusEl.className = `status${type === 'error' ? ' error' : ''}`;
+    statusEl.classList.remove('hidden');
+    viewerContainerEl.classList.add('hidden');
+  }
+
+  function showViewer() {
+    statusEl.classList.add('hidden');
+    viewerContainerEl.classList.remove('hidden');
+  }
+
+  function updateControls() {
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+
+    toggleModeBtn.classList.remove('active');
+    pageIndicatorEl.textContent = 'Page 1 / 1';
+    modeIndicatorEl.textContent = 'Mode: Image';
+  }
+
+  function buildImageFrame() {
+    const frame = document.createElement('section');
+    frame.className = 'page-frame';
+
+    const label = document.createElement('div');
+    label.className = 'page-label';
+    label.textContent = 'Floor Map';
+
+    const img = document.createElement('img');
+    img.src = IMAGE_URL;
+    img.alt = 'Floor map';
+    img.style.display = 'block';
+    img.style.width = '100%';
+    img.style.height = 'auto';
+    img.style.borderRadius = '8px';
+    img.style.background = '#fff';
+
+    img.onload = () => {
+      showViewer();
+    };
+
+    img.onerror = () => {
+      setStatus('Could not load the image. Check the IMAGE_URL path.', 'error');
+    };
+
+    frame.appendChild(label);
+    frame.appendChild(img);
+    return frame;
+  }
+
+  function loadImage() {
+    viewerInnerEl.innerHTML = '';
+    updateControls();
+
+    if (!IMAGE_URL || IMAGE_URL === 'your-image-file.png') {
+      setStatus('No image file is configured yet. Update the IMAGE_URL constant in the script.', 'error');
+      return;
+    }
+
+    setStatus('Loading floor map image…');
+    viewerInnerEl.appendChild(buildImageFrame());
+    viewerContainerEl.scrollTop = 0;
+    viewerContainerEl.scrollLeft = 0;
+  }
+
+  reloadBtn.addEventListener('click', loadImage);
+
+  updateControls();
+  loadImage();
+</script>
+</body>
+</html>
